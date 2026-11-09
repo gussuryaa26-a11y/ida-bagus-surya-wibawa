@@ -281,6 +281,7 @@ export async function getMemoForBooking(bookingId: string): Promise<MemoRow | nu
 export async function generateInternalMemo(
   bookingId: string,
   actor: SessionUser | null,
+  options: { silent?: boolean } = {},
 ): Promise<MemoRow> {
   const booking = await getBookingById(bookingId);
   if (!booking) throw new AppError("NOT_FOUND", "Pengajuan tidak ditemukan.");
@@ -311,7 +312,12 @@ export async function generateInternalMemo(
       if (locked.rows[0]) {
         const row = locked.rows[0];
         if (row.generation_status === "ready" && row.file_reference) {
-          return { row, skip: true };
+          try {
+            await access(safeMemoPath(row.file_reference));
+            return { row, skip: true };
+          } catch {
+            // File is missing (e.g. ephemeral serverless storage); regenerate it.
+          }
         }
         const updated = await client.query<MemoDbRow>(
           `UPDATE internal_memos SET
@@ -382,25 +388,27 @@ export async function generateInternalMemo(
       return updated.rows[0];
     });
 
-    const academicIds = await getAcademicRecipientIds();
-    await sendNotifications([
-      {
-        recipientId: booking.requesterId,
-        eventType: "memo.ready",
-        title: "Internal Memo tersedia",
-        body: `Internal Memo untuk "${booking.activityName}" telah dibuat dan dapat diunduh dari halaman pengajuan.`,
-        entityType: "booking_request",
-        entityId: bookingId,
-      },
-      ...academicIds.map((recipientId) => ({
-        recipientId,
-        eventType: "memo.ready" as const,
-        title: "Internal Memo dibuat",
-        body: `Internal Memo untuk "${booking.activityName}" (${booking.roomName}) telah dibuat.`,
-        entityType: "booking_request" as const,
-        entityId: bookingId,
-      })),
-    ]);
+    if (!options.silent) {
+      const academicIds = await getAcademicRecipientIds();
+      await sendNotifications([
+        {
+          recipientId: booking.requesterId,
+          eventType: "memo.ready",
+          title: "Internal Memo tersedia",
+          body: `Internal Memo untuk "${booking.activityName}" telah dibuat dan dapat diunduh dari halaman pengajuan.`,
+          entityType: "booking_request",
+          entityId: bookingId,
+        },
+        ...academicIds.map((recipientId) => ({
+          recipientId,
+          eventType: "memo.ready" as const,
+          title: "Internal Memo dibuat",
+          body: `Internal Memo untuk "${booking.activityName}" (${booking.roomName}) telah dibuat.`,
+          entityType: "booking_request" as const,
+          entityId: bookingId,
+        })),
+      ]);
+    }
     return mapMemo(ready);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Pembuatan PDF gagal.";
@@ -408,25 +416,27 @@ export async function generateInternalMemo(
       `UPDATE internal_memos SET generation_status = 'failed', error_message = $2 WHERE id = $1`,
       [memoRow.id, message.slice(0, 500)],
     );
-    const academicIds = await getAcademicRecipientIds();
-    await sendNotifications([
-      {
-        recipientId: booking.requesterId,
-        eventType: "memo.failed",
-        title: "Internal Memo gagal dibuat",
-        body: "Booking tetap disetujui. Pembuatan dokumen dapat dicoba ulang oleh pengguna berwenang.",
-        entityType: "booking_request",
-        entityId: bookingId,
-      },
-      ...academicIds.map((recipientId) => ({
-        recipientId,
-        eventType: "memo.failed" as const,
-        title: "Internal Memo gagal dibuat",
-        body: `Pembuatan memo untuk "${booking.activityName}" gagal. Booking tidak dibatalkan.`,
-        entityType: "booking_request" as const,
-        entityId: bookingId,
-      })),
-    ]);
+    if (!options.silent) {
+      const academicIds = await getAcademicRecipientIds();
+      await sendNotifications([
+        {
+          recipientId: booking.requesterId,
+          eventType: "memo.failed",
+          title: "Internal Memo gagal dibuat",
+          body: "Booking tetap disetujui. Pembuatan dokumen dapat dicoba ulang oleh pengguna berwenang.",
+          entityType: "booking_request",
+          entityId: bookingId,
+        },
+        ...academicIds.map((recipientId) => ({
+          recipientId,
+          eventType: "memo.failed" as const,
+          title: "Internal Memo gagal dibuat",
+          body: `Pembuatan memo untuk "${booking.activityName}" gagal. Booking tidak dibatalkan.`,
+          entityType: "booking_request" as const,
+          entityId: bookingId,
+        })),
+      ]);
+    }
     throw error;
   }
 }
@@ -449,7 +459,26 @@ export async function downloadInternalMemo(
   if (row.generation_status !== "ready" || !row.file_reference) {
     throw new AppError("BUSINESS_RULE", "Dokumen belum tersedia atau sedang diproses.");
   }
-  const bytes = await readFile(safeMemoPath(row.file_reference));
+  let bytes: Buffer;
+  try {
+    bytes = await readFile(safeMemoPath(row.file_reference));
+  } catch {
+    // Vercel/serverless storage can be ephemeral: the PDF may have been
+    // generated on another instance. Regenerate silently, then serve it.
+    await generateInternalMemo(row.booking_id, user, { silent: true });
+    const refreshed = await queryOne<MemoDbRow>(
+      `SELECT * FROM internal_memos WHERE id = $1`,
+      [memoId],
+    );
+    if (
+      !refreshed ||
+      refreshed.generation_status !== "ready" ||
+      !refreshed.file_reference
+    ) {
+      throw new AppError("BUSINESS_RULE", "Dokumen belum tersedia atau sedang diproses.");
+    }
+    bytes = await readFile(safeMemoPath(refreshed.file_reference));
+  }
   await query(
     `INSERT INTO audit_logs (actor_id, actor_label, action, entity_type, entity_id, new_state)
      VALUES ($1, $2, 'internal_memo.downloaded', 'internal_memo', $3, $4)`,

@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import { unlink } from "node:fs/promises";
+import path from "node:path";
 import { createBookingRequest, type BookingInput } from "@/lib/bookings";
 import { decideBooking } from "@/lib/approvals";
 import { cancelPendingBooking } from "@/lib/cancellations";
@@ -135,6 +137,36 @@ describe("internal memo", () => {
     await expect(downloadInternalMemo(memo[0].id, student2)).rejects.toMatchObject({
       code: "NOT_FOUND",
     });
+  });
+
+  it("regenerates a memo file when ephemeral storage no longer has it", async () => {
+    const approved = await approvedBooking();
+    const memo = await query<{ id: string; file_reference: string }>(
+      "SELECT id, file_reference FROM internal_memos WHERE booking_id = $1",
+      [approved.id],
+    );
+    expect(memo[0]?.file_reference).toBeTruthy();
+
+    await unlink(path.join(process.env.MEMO_STORAGE_DIR!, memo[0].file_reference));
+
+    const download = await downloadInternalMemo(memo[0].id, student1);
+    expect(download.bytes.subarray(0, 4).toString()).toBe("%PDF");
+    expect(download.bytes.length).toBeGreaterThan(1000);
+  });
+
+  it("regenerates a memo file when ephemeral storage no longer has it", async () => {
+    const approved = await approvedBooking();
+    const memo = await query<{ id: string; file_reference: string }>(
+      "SELECT id, file_reference FROM internal_memos WHERE booking_id = $1",
+      [approved.id],
+    );
+    expect(memo[0]?.file_reference).toBeTruthy();
+
+    await unlink(path.join(process.env.MEMO_STORAGE_DIR!, memo[0].file_reference));
+
+    const download = await downloadInternalMemo(memo[0].id, student1);
+    expect(download.bytes.subarray(0, 4).toString()).toBe("%PDF");
+    expect(download.bytes.length).toBeGreaterThan(1000);
   });
 
   it("does not cancel an approval when the official template is missing, and supports retry", async () => {
