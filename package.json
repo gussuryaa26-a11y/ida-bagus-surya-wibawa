@@ -1,0 +1,53 @@
+{
+  "name": "simpar-idb-bali",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Sistem Peminjaman Ruangan Kampus IDB Bali (non-komersial)",
+  "scripts": {
+    "dev": "next dev",
+    "preview": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/preview.ps1",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "db:start": "tsx scripts/dev-db.ts",
+    "db:migrate": "tsx scripts/migrate.ts",
+    "db:seed": "tsx scripts/seed.ts",
+    "db:setup": "tsx scripts/migrate.ts && tsx scripts/seed.ts",
+    "job:deadlines": "tsx scripts/run-deadlines.ts",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.2",
+    "clsx": "^2.1.1",
+    "date-fns": "^4.1.0",
+    "date-fns-tz": "^3.2.0",
+    "dotenv": "^18.0.8",
+    "exceljs": "^4.4.0",
+    "lucide-react": "^0.545.0",
+    "next": "15.5.28",
+    "pdf-lib": "^1.17.1",
+    "pg": "^8.16.3",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "tailwind-merge": "^3.3.1",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.14",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^22.18.10",
+    "@types/pg": "^8.15.5",
+    "@types/react": "^19.1.9",
+    "@types/react-dom": "^19.1.7",
+    "embedded-postgres": "18.4.0-beta.17",
+    "eslint": "^8.57.1",
+    "eslint-config-next": "^15.5.28",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.14",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  }
+}
