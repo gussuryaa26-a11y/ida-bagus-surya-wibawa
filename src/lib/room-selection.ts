@@ -70,6 +70,8 @@ export function getRoomSelectionState(
       );
     case "restriction":
       return blocked("Ruangan Sedang Ditutup", "warning");
+    case "outside_booking_hours":
+      return blocked("Di Luar Jam Operasional", "warning");
     case "data_stale":
       return blocked("Data Jadwal Perlu Diperbarui", "warning");
     default:
@@ -108,6 +110,7 @@ export function getRoomAvailabilityPriority(
     case "capacity":
     case "facilities":
     case "restriction":
+    case "outside_booking_hours":
     case "data_stale":
       return 3;
     case "booking_confirmed":

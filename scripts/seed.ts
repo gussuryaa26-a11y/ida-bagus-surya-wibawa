@@ -246,8 +246,8 @@ async function main() {
       `UPDATE operational_settings SET
          timezone = 'Asia/Makassar',
          workdays = '{1,2,3,4,5}',
-         open_time = '08:00',
-         close_time = '16:00',
+         open_time = '07:00',
+         close_time = '21:00',
          decision_target_minutes = 60,
          hold_limit_minutes = 180,
          revision_hold_policy = 'release',

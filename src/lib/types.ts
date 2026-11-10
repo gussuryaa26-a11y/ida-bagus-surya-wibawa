@@ -185,6 +185,7 @@ export type AvailabilityCode =
   | "class_conflict"
   | "booking_conflict"
   | "restriction"
+  | "outside_booking_hours"
   | "data_stale";
 
 /**
@@ -200,6 +201,7 @@ export type AvailabilityBlockReason =
   | "booking_confirmed"
   | "slot_held"
   | "restriction"
+  | "outside_booking_hours"
   | "data_stale";
 
 export type AvailabilityResult = {

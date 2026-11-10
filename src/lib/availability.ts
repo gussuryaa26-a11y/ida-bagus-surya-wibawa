@@ -10,6 +10,7 @@ import {
 } from "./operational-clock";
 import { AppError } from "./errors";
 import { evaluateCapacity } from "./capacity";
+import { getRoomBookingHoursViolation, validateGeneralBookingHours } from "./booking-hours";
 import type {
   AvailabilityBlockReason,
   AvailabilityCode,
@@ -28,6 +29,7 @@ const LABELS: Record<AvailabilityCode, string> = {
   class_conflict: "Terjadwal untuk perkuliahan",
   booking_conflict: "Sudah dibooking / slot ditahan",
   restriction: "Tidak tersedia: penutupan/pemeliharaan",
+  outside_booking_hours: "Di luar jam operasional ruangan",
   data_stale: "Data jadwal perlu diperbarui",
 };
 
@@ -93,6 +95,10 @@ export async function checkRoomAvailability(
   const freshness = await getScheduleFreshness(client);
   const timezone = config.settings.timezone;
 
+  // Jam umum berlaku untuk semua ruangan. Perbandingan timestamp membuat
+  // kelebihan satu detik dari jam tutup tetap ditolak.
+  validateGeneralBookingHours(input.startAt, input.endAt, timezone);
+
   if (!room.isActive) {
     return result(
       room,
@@ -100,6 +106,22 @@ export async function checkRoomAvailability(
       [room.statusNote ? `Ruangan dinonaktifkan: ${room.statusNote}` : "Ruangan dinonaktifkan."],
       freshness.lastImportAt,
       "room_inactive",
+    );
+  }
+
+  const bookingHoursViolation = getRoomBookingHoursViolation(
+    room,
+    input.startAt,
+    input.endAt,
+    timezone,
+  );
+  if (bookingHoursViolation) {
+    return result(
+      room,
+      "outside_booking_hours",
+      [bookingHoursViolation],
+      freshness.lastImportAt,
+      "outside_booking_hours",
     );
   }
 

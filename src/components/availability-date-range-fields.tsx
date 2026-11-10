@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { GENERAL_BOOKING_HOURS } from "@/lib/booking-hours";
 import { dateKeyInTimezone, timeKeyInTimezone } from "@/lib/operational-clock";
 
 /**
@@ -43,6 +44,8 @@ export function AvailabilityDateRangeFields({
 
   const today = now ? dateKeyInTimezone(now, timezone) : undefined;
   const minTime = now && date === today ? timeKeyInTimezone(now, timezone) : undefined;
+  const earliestStartTime =
+    minTime && minTime > GENERAL_BOOKING_HOURS.openTime ? minTime : GENERAL_BOOKING_HOURS.openTime;
 
   return (
     <>
@@ -70,7 +73,8 @@ export function AvailabilityDateRangeFields({
             name="startTime"
             type="time"
             defaultValue={initialStartTime}
-            min={minTime}
+            min={earliestStartTime}
+            max={GENERAL_BOOKING_HOURS.closeTime}
             onChange={(event) => setStartTime(event.target.value)}
             className="field-input"
           />
@@ -85,6 +89,7 @@ export function AvailabilityDateRangeFields({
             type="time"
             defaultValue={initialEndTime}
             min={startTime || minTime}
+            max={GENERAL_BOOKING_HOURS.closeTime}
             className="field-input"
           />
         </div>

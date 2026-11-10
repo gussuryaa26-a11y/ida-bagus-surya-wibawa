@@ -9,6 +9,8 @@ import { decideBooking } from "@/lib/approvals";
 import { checkRoomAvailability } from "@/lib/availability";
 import { listRoomAvailability } from "@/lib/recommendation";
 import { AppError } from "@/lib/errors";
+import { getBookingScheduleFieldErrors } from "@/lib/booking-hours";
+import { addDaysToDateKey, combineDateAndTime } from "@/lib/operational-clock";
 import { query } from "@/lib/db";
 import {
   IDS,
@@ -262,6 +264,135 @@ describe("booking creation", () => {
     });
     expect(availability.available).toBe(false);
     expect(availability.code).toBe("booking_conflict");
+  });
+});
+
+describe("booking hours", () => {
+  const timezone = "Asia/Makassar";
+
+  it("allows a general room exactly from 07:00 to 21:00", async () => {
+    const openAt = combineDateAndTime(TEST_DATE, "07:00", timezone);
+    const closeAt = combineDateAndTime(TEST_DATE, "21:00", timezone);
+    const availability = await checkRoomAvailability({
+      roomId: IDS.roomB,
+      startAt: openAt,
+      endAt: closeAt,
+    });
+    expect(availability.available).toBe(true);
+  });
+
+  it("rejects a general room one second before open or after close", async () => {
+    const openAt = combineDateAndTime(TEST_DATE, "07:00", timezone);
+    const closeAt = combineDateAndTime(TEST_DATE, "21:00", timezone);
+
+    await expect(
+      checkRoomAvailability({
+        roomId: IDS.roomB,
+        startAt: new Date(openAt.getTime() - 1_000),
+        endAt: new Date(openAt.getTime() + 60 * 60 * 1_000),
+      }),
+    ).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+
+    await expect(
+      checkRoomAvailability({
+        roomId: IDS.roomB,
+        startAt: new Date(closeAt.getTime() - 60 * 60 * 1_000),
+        endAt: new Date(closeAt.getTime() + 1_000),
+      }),
+    ).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+  });
+
+  it("allows the incubator exactly until 20:00 and rejects one second after", async () => {
+    const openAt = combineDateAndTime(TEST_DATE, "07:00", timezone);
+    const closeAt = combineDateAndTime(TEST_DATE, "20:00", timezone);
+    const allowed = await checkRoomAvailability({
+      roomId: IDS.roomIncubator,
+      startAt: openAt,
+      endAt: closeAt,
+      participantCount: 4,
+    });
+    expect(allowed.available).toBe(true);
+
+    const tooLate = await checkRoomAvailability({
+      roomId: IDS.roomIncubator,
+      startAt: new Date(closeAt.getTime() - 60 * 60 * 1_000),
+      endAt: new Date(closeAt.getTime() + 1_000),
+      participantCount: 4,
+    });
+    expect(tooLate.available).toBe(false);
+    expect(tooLate.code).toBe("outside_booking_hours");
+  });
+
+  it("rejects the incubator on a weekend", async () => {
+    const saturday = addDaysToDateKey(TEST_DATE, 5);
+    const startAt = combineDateAndTime(saturday, "10:00", timezone);
+    const endAt = combineDateAndTime(saturday, "12:00", timezone);
+    const availability = await checkRoomAvailability({
+      roomId: IDS.roomIncubator,
+      startAt,
+      endAt,
+      participantCount: 4,
+    });
+    expect(availability.available).toBe(false);
+    expect(availability.code).toBe("outside_booking_hours");
+
+    await expect(
+      createBookingRequest(
+        input({
+          roomId: IDS.roomIncubator,
+          date: saturday,
+          startTime: "10:00",
+          endTime: "12:00",
+          participantCount: 4,
+        }),
+        student1,
+      ),
+    ).rejects.toMatchObject({ code: "BUSINESS_RULE", details: { code: "outside_booking_hours" } });
+  });
+
+  it("rejects create requests outside general hours", async () => {
+    await expect(
+      createBookingRequest(input({ startTime: "06:59", endTime: "08:00" }), student1),
+    ).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+    await expect(
+      createBookingRequest(input({ startTime: "20:00", endTime: "21:01" }), student1),
+    ).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+  });
+
+  it("rejects an incubator request after 20:00", async () => {
+    await expect(
+      createBookingRequest(
+        input({ roomId: IDS.roomIncubator, startTime: "19:00", endTime: "20:01", participantCount: 4 }),
+        student1,
+      ),
+    ).rejects.toMatchObject({ code: "BUSINESS_RULE", details: { code: "outside_booking_hours" } });
+  });
+
+  it("validates a past date during date selection and enforces the time window", () => {
+    const now = combineDateAndTime("2026-11-11", "10:00", timezone);
+    expect(
+      getBookingScheduleFieldErrors(
+        { date: "2026-11-10", startTime: "10:00", endTime: "12:00" },
+        timezone,
+        now,
+      ),
+    ).toMatchObject({ date: "Tanggal kegiatan tidak boleh sebelum hari ini." });
+
+    expect(
+      getBookingScheduleFieldErrors(
+        { date: "2026-11-11", startTime: "06:59", endTime: "12:00" },
+        timezone,
+        now,
+      ).time,
+    ).toContain("07:00");
+
+    expect(
+      getBookingScheduleFieldErrors(
+        { date: "2026-11-11", startTime: "10:00", endTime: "21:01" },
+        timezone,
+        now,
+      ).time,
+    ).toContain("21:00");
   });
 });
 

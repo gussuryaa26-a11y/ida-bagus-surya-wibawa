@@ -21,7 +21,12 @@ import { RoomCard, type RoomCardRoom } from "@/components/room-card";
 import { RoomSelectionStatus } from "@/components/room-selection-status";
 import { FACILITY_LABELS, ACTIVITY_LABELS } from "@/lib/format";
 import { formatCapacityPercentage } from "@/lib/capacity";
-import { dateKeyInTimezone, isPastDateTime, timeKeyInTimezone } from "@/lib/operational-clock";
+import {
+  GENERAL_BOOKING_HOURS,
+  INCUBATOR_BOOKING_HOURS,
+  getBookingScheduleFieldErrors,
+} from "@/lib/booking-hours";
+import { dateKeyInTimezone, timeKeyInTimezone } from "@/lib/operational-clock";
 import { getRoomSelectionState } from "@/lib/room-selection";
 import {
   ACTIVITY_TYPES,
@@ -124,6 +129,8 @@ export function BookingWizard({
 
   const today = now ? dateKeyInTimezone(now, timezone) : undefined;
   const minTime = now && form.date === today ? timeKeyInTimezone(now, timezone) : undefined;
+  const earliestStartTime =
+    minTime && minTime > GENERAL_BOOKING_HOURS.openTime ? minTime : GENERAL_BOOKING_HOURS.openTime;
 
   const allRooms = useMemo(() => {
     if (candidates) return candidates.map((candidate) => candidate.room);
@@ -226,6 +233,20 @@ export function BookingWizard({
     form.endTime,
   ]);
 
+  function updateSchedule(patch: Partial<Pick<FormState, "date" | "startTime" | "endTime">>) {
+    const next = { ...form, ...patch };
+    setForm(next);
+    const scheduleErrors = getBookingScheduleFieldErrors(next, timezone);
+    setErrors((current) => {
+      const updated = { ...current };
+      delete updated.date;
+      delete updated.time;
+      if (scheduleErrors.date) updated.date = scheduleErrors.date;
+      if (scheduleErrors.time) updated.time = scheduleErrors.time;
+      return updated;
+    });
+  }
+
   function validateStep1(): boolean {
     const nextErrors: Record<string, string> = {};
     if (form.activityName.trim().length < 3) nextErrors.activityName = "Nama kegiatan minimal 3 karakter.";
@@ -233,14 +254,9 @@ export function BookingWizard({
     if (!Number.isInteger(Number(form.participantCount)) || Number(form.participantCount) <= 0) {
       nextErrors.participantCount = "Jumlah peserta harus lebih dari nol.";
     }
-    const todayKey = dateKeyInTimezone(new Date(), timezone);
-    if (!form.date) nextErrors.date = "Tanggal kegiatan wajib diisi.";
-    else if (form.date < todayKey) nextErrors.date = "Tanggal kegiatan tidak boleh sebelum hari ini.";
-    if (!form.startTime || !form.endTime) nextErrors.time = "Waktu mulai dan selesai wajib diisi.";
-    else if (form.endTime <= form.startTime) nextErrors.time = "Waktu selesai harus setelah waktu mulai.";
-    else if (!nextErrors.date && isPastDateTime(form.date, form.startTime, timezone)) {
-      nextErrors.time = "Waktu mulai tidak boleh di masa lalu. Pilih waktu setelah sekarang.";
-    }
+    const scheduleErrors = getBookingScheduleFieldErrors(form, timezone);
+    if (scheduleErrors.date) nextErrors.date = scheduleErrors.date;
+    if (scheduleErrors.time) nextErrors.time = scheduleErrors.time;
     if (form.organizationName.trim().length < 3) {
       nextErrors.organizationName = "Isi nama organisasi yang Anda wakili (minimal 3 karakter).";
     }
@@ -492,7 +508,7 @@ export function BookingWizard({
                 min={today}
                 className="field-input"
                 value={form.date}
-                onChange={(event) => setForm({ ...form, date: event.target.value })}
+                onChange={(event) => updateSchedule({ date: event.target.value })}
                 aria-invalid={Boolean(errors.date)}
               />
               {errors.date ? <p className="mt-1 text-xs text-danger-700">{errors.date}</p> : null}
@@ -506,10 +522,11 @@ export function BookingWizard({
                 <input
                   id="startTime"
                   type="time"
-                  min={minTime}
+                  min={earliestStartTime}
+                  max={GENERAL_BOOKING_HOURS.closeTime}
                   className="field-input"
                   value={form.startTime}
-                  onChange={(event) => setForm({ ...form, startTime: event.target.value })}
+                  onChange={(event) => updateSchedule({ startTime: event.target.value })}
                 />
               </div>
               <div>
@@ -519,13 +536,19 @@ export function BookingWizard({
                 <input
                   id="endTime"
                   type="time"
-                  min={form.startTime || minTime}
+                  min={form.startTime || earliestStartTime}
+                  max={GENERAL_BOOKING_HOURS.closeTime}
                   className="field-input"
                   value={form.endTime}
-                  onChange={(event) => setForm({ ...form, endTime: event.target.value })}
+                  onChange={(event) => updateSchedule({ endTime: event.target.value })}
                 />
               </div>
             </div>
+            <p className="text-xs leading-relaxed text-muted sm:col-span-2">
+              Jam booking ruangan umum {GENERAL_BOOKING_HOURS.openTime}–{GENERAL_BOOKING_HOURS.closeTime}.
+              Ruang Inkubator Bisnis hanya Senin–Jumat, {INCUBATOR_BOOKING_HOURS.openTime}–
+              {INCUBATOR_BOOKING_HOURS.closeTime}.
+            </p>
             {errors.time ? <p className="text-xs text-danger-700 sm:col-span-2">{errors.time}</p> : null}
 
           </div>

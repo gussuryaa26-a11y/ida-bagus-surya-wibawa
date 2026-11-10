@@ -4,6 +4,7 @@ import { AppError } from "./errors";
 import { writeAudit } from "./audit";
 import { getClockConfig, getSettings } from "./settings";
 import { checkRoomAvailability } from "./availability";
+import { GENERAL_BOOKING_HOURS, validateGeneralBookingHours } from "./booking-hours";
 import { formatCapacityPercentage } from "./capacity";
 import { addOperationalMinutes, combineDateAndTime } from "./operational-clock";
 import { getAcademicRecipientIds, sendNotifications } from "./notifications";
@@ -177,6 +178,15 @@ export function validateBookingInput(input: BookingInput): void {
   if (!/^\d{2}:\d{2}$/.test(input.startTime) || !/^\d{2}:\d{2}$/.test(input.endTime)) {
     throw new AppError("VALIDATION_ERROR", "Waktu kegiatan tidak valid.");
   }
+  if (
+    input.startTime < GENERAL_BOOKING_HOURS.openTime ||
+    input.endTime > GENERAL_BOOKING_HOURS.closeTime
+  ) {
+    throw new AppError(
+      "VALIDATION_ERROR",
+      `Ruangan kampus hanya dapat dibooking pada pukul ${GENERAL_BOOKING_HOURS.openTime}–${GENERAL_BOOKING_HOURS.closeTime}. Waktu di luar rentang tersebut tidak diperbolehkan.`,
+    );
+  }
 }
 
 async function assertRequesterPolicy(
@@ -240,6 +250,7 @@ export async function createBookingRequest(
   if (endAt <= startAt) {
     throw new AppError("VALIDATION_ERROR", "Waktu selesai harus setelah waktu mulai.");
   }
+  validateGeneralBookingHours(startAt, endAt, settings.timezone);
   if (startAt.getTime() < now.getTime()) {
     throw new AppError("BUSINESS_RULE", "Tanggal dan waktu mulai tidak boleh di masa lalu.");
   }
@@ -490,6 +501,7 @@ export async function resubmitBooking(
   if (endAt <= startAt) {
     throw new AppError("VALIDATION_ERROR", "Waktu selesai harus setelah waktu mulai.");
   }
+  validateGeneralBookingHours(startAt, endAt, settings.timezone);
   if (startAt.getTime() < now.getTime()) {
     throw new AppError("BUSINESS_RULE", "Tanggal dan waktu mulai tidak boleh di masa lalu.");
   }

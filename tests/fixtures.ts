@@ -14,6 +14,7 @@ export const IDS = {
   roomB: "44444444-4444-4444-8444-444444444442",
   roomC: "44444444-4444-4444-8444-444444444443",
   roomUnverified: "44444444-4444-4444-8444-444444444444",
+  roomIncubator: "44444444-4444-4444-8444-444444444445",
   importId: "55555555-5555-4555-8555-555555555551",
   scheduleId: "55555555-5555-4555-8555-555555555552",
 };
@@ -186,8 +187,9 @@ export async function resetDatabase(): Promise<void> {
        ($1,'A-101','Ruang A', 'classroom', 40, true, '{ac,wifi,proyektor}', true, 'Ruang kelas uji.', true, false, 'TEST_FIXTURE'),
        ($2,'B-201','Aula B', 'hall', 100, true, '{ac,wifi,sound_system}', true, 'Aula uji.', true, false, 'TEST_FIXTURE'),
        ($3,'C-301','Ruang C', 'multipurpose', 50, true, '{ac,wifi,meja}', true, 'Ruang serbaguna uji.', true, false, 'TEST_FIXTURE'),
-       ($4,'D-401','Ruang D', 'classroom', NULL, false, '{}', false, 'Data belum diverifikasi.', true, false, 'TEST_FIXTURE')`,
-    [IDS.roomA, IDS.roomB, IDS.roomC, IDS.roomUnverified],
+       ($4,'D-401','Ruang D', 'classroom', NULL, false, '{}', false, 'Data belum diverifikasi.', true, false, 'TEST_FIXTURE'),
+       ($5,'INKUBATOR','Ruang Inkubator Bisnis', 'multipurpose', 6, true, '{ac,wifi,proyektor,meja,kursi}', true, 'Ruang Inkubator Bisnis uji.', true, false, 'TEST_FIXTURE')`,
+    [IDS.roomA, IDS.roomB, IDS.roomC, IDS.roomUnverified, IDS.roomIncubator],
   );
 
   await query(
