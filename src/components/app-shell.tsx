@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import Link from "next/link";
+import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, Menu, X } from "lucide-react";
+import { Bell, Loader2, Menu, X } from "lucide-react";
 import clsx from "clsx";
 import { Logo } from "@/components/ui/logo";
 import { LogoutButton } from "@/components/logout-button";
@@ -16,6 +16,21 @@ export type NavItem = {
   icon: ReactNode;
   badge?: number;
 };
+
+/**
+ * Indikator kecil di dalam Link. `useLinkStatus` harus dipanggil dari child
+ * Link agar status navigasi klik tersebut terbaca.
+ */
+function LinkPendingIndicator() {
+  const { pending } = useLinkStatus();
+  if (!pending) return null;
+  return (
+    <span className="inline-flex items-center" aria-live="polite">
+      <Loader2 className="h-3.5 w-3.5 motion-safe:animate-spin" aria-hidden="true" />
+      <span className="sr-only">Memuat halaman…</span>
+    </span>
+  );
+}
 
 export function AppShell({
   children,
@@ -87,6 +102,7 @@ export function AppShell({
                 {item.icon}
               </span>
               <span className="flex-1">{item.label}</span>
+              <LinkPendingIndicator />
               {item.badge ? (
                 <span className="rounded-full bg-accent-500 px-1.5 py-0.5 text-[0.65rem] font-bold text-ink">
                   {item.badge}

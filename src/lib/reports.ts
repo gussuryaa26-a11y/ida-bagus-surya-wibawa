@@ -1,6 +1,12 @@
 import { query } from "./db";
 import { getClockConfig } from "./settings";
-import { addDaysToDateKey, combineDateAndTime, dateKeyInTimezone, operationalMinutesBetween } from "./operational-clock";
+import {
+  addDaysToDateKey,
+  combineDateAndTime,
+  dateKeyInTimezone,
+  operationalMinutesBetween,
+  type ClockConfig,
+} from "./operational-clock";
 import { countUnreadNotifications } from "./notifications";
 import { getScheduleFreshness } from "./schedule-import";
 import type { BookingWithRelations } from "./types";
@@ -14,28 +20,36 @@ export type StudentDashboard = {
   unreadNotifications: number;
   decisionTargetHours: number;
   holdLimitHours: number;
+  config: ClockConfig;
 };
 
 export async function getStudentDashboard(userId: string): Promise<StudentDashboard> {
-  const countsRows = await query<{ status: string; count: string }>(
-    `SELECT status, count(*)::text AS count FROM booking_requests WHERE requester_id = $1 GROUP BY status`,
-    [userId],
-  );
+  // Semua query dashboard independen. Jalankan bersamaan agar perpindahan
+  // halaman tidak menunggu satu query selesai sebelum query berikutnya.
+  const [countsRows, pending, upcoming, recent, config, unreadNotifications] = await Promise.all([
+    query<{ status: string; count: string }>(
+      `SELECT status, count(*)::text AS count FROM booking_requests WHERE requester_id = $1 GROUP BY status`,
+      [userId],
+    ),
+    listMyBookings(userId, { status: "pending_academic" }),
+    listMyUpcomingBookings(userId),
+    listMyBookings(userId),
+    getClockConfig(),
+    countUnreadNotifications(userId),
+  ]);
+
   const counts: Record<string, number> = {};
   for (const row of countsRows) counts[row.status] = Number(row.count);
 
-  const pending = await listMyBookings(userId, { status: "pending_academic" });
-  const upcoming = await listMyUpcomingBookings(userId);
-  const recent = await listMyBookings(userId);
-  const settings = await getClockConfig();
   return {
     counts,
     pending,
     upcoming,
     recent: recent.slice(0, 8),
-    unreadNotifications: await countUnreadNotifications(userId),
-    decisionTargetHours: settings.settings.decisionTargetMinutes / 60,
-    holdLimitHours: settings.settings.holdLimitMinutes / 60,
+    unreadNotifications,
+    decisionTargetHours: config.settings.decisionTargetMinutes / 60,
+    holdLimitHours: config.settings.holdLimitMinutes / 60,
+    config,
   };
 }
 

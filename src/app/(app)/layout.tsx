@@ -22,11 +22,27 @@ import { AppShell, type NavItem } from "@/components/app-shell";
 
 export default async function AuthenticatedLayout({ children }: { children: ReactNode }) {
   const user = await requireUser();
-  const settings = await getSettings();
-  const unread = await countUnreadNotifications(user.id);
-  const demoRow = await queryOne<{ exists: boolean }>(
-    "SELECT EXISTS(SELECT 1 FROM rooms WHERE is_demo_data = true) AS exists",
-  );
+
+  // Query layout independen dijalankan bersamaan. Ini mengurangi waktu tunggu
+  // saat berpindah menu karena shell tidak perlu menunggu query satu per satu.
+  const pendingPromise =
+    user.role === "student"
+      ? queryOne<{ count: string }>(
+          "SELECT count(*)::text AS count FROM booking_requests WHERE requester_id = $1 AND status = 'pending_academic'",
+          [user.id],
+        )
+      : user.role === "academic"
+        ? queryOne<{ count: string }>(
+            "SELECT count(*)::text AS count FROM booking_requests WHERE status = 'pending_academic'",
+          )
+        : Promise.resolve(null);
+
+  const [settings, unread, demoRow, pending] = await Promise.all([
+    getSettings(),
+    countUnreadNotifications(user.id),
+    queryOne<{ exists: boolean }>("SELECT EXISTS(SELECT 1 FROM rooms WHERE is_demo_data = true) AS exists"),
+    pendingPromise,
+  ]);
 
   const icon = "h-[1.1rem] w-[1.1rem]";
   const common: NavItem[] = [
@@ -37,10 +53,6 @@ export default async function AuthenticatedLayout({ children }: { children: Reac
   let navItems: NavItem[] = [];
 
   if (user.role === "student") {
-    const pending = await queryOne<{ count: string }>(
-      "SELECT count(*)::text AS count FROM booking_requests WHERE requester_id = $1 AND status = 'pending_academic'",
-      [user.id],
-    );
     navItems = [
       { href: "/dashboard", label: "Dashboard", icon: <LayoutDashboard className={icon} /> },
       { href: "/bookings/new", label: "Ajukan Peminjaman", icon: <FilePlus2 className={icon} /> },
@@ -54,9 +66,6 @@ export default async function AuthenticatedLayout({ children }: { children: Reac
       ...common,
     ];
   } else if (user.role === "academic") {
-    const pending = await queryOne<{ count: string }>(
-      "SELECT count(*)::text AS count FROM booking_requests WHERE status = 'pending_academic'",
-    );
     navItems = [
       { href: "/academic", label: "Dashboard Akademik", icon: <Gauge className={icon} />, badge: Number(pending?.count ?? 0) || undefined },
       { href: "/rooms", label: "Ruangan Kampus", icon: <DoorOpen className={icon} /> },

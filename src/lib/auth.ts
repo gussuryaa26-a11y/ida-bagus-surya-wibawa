@@ -1,4 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
+import { cache } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import bcrypt from "bcryptjs";
@@ -131,10 +132,14 @@ async function findUserByToken(token: string | undefined): Promise<SessionUser |
   return mapUser(row);
 }
 
-export async function getSessionUser(): Promise<SessionUser | null> {
+/**
+ * Layout dan page sama-sama memanggil `requireUser()`. `cache()` memastikan
+ * query sesi hanya sekali per request, bukan sekali per komponen server.
+ */
+export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
   const jar = await cookies();
   return findUserByToken(jar.get(SESSION_COOKIE)?.value);
-}
+});
 
 export async function getSessionUserFromRequest(request: NextRequest | Request): Promise<SessionUser | null> {
   const cookieHeader = request.headers.get("cookie");

@@ -29,8 +29,7 @@ export default async function RoomsPage({
 }) {
   const user = await requireUser();
   const canBook = user.role === "student";
-  const params = await searchParams;
-  const settings = await getSettings();
+  const [params, settings] = await Promise.all([searchParams, getSettings()]);
   const first = (key: string) => (Array.isArray(params[key]) ? params[key]?.[0] : params[key]);
 
   const defaultWindow = defaultAvailabilityWindow(

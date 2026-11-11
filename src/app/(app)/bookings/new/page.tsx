@@ -18,9 +18,13 @@ export default async function NewBookingPage({
 }) {
   const user = await requireUser();
   if (user.role !== "student") redirect("/dashboard");
-  const settings = await getSettings();
-  const organizations = await listActiveOrganizations();
-  const rooms = (await listRooms()).map<RoomCardRoom>((room) => ({
+  const [settings, organizations, roomRows, params] = await Promise.all([
+    getSettings(),
+    listActiveOrganizations(),
+    listRooms(),
+    searchParams,
+  ]);
+  const rooms = roomRows.map<RoomCardRoom>((room) => ({
     id: room.id,
     code: room.code,
     name: room.name,
@@ -37,7 +41,6 @@ export default async function NewBookingPage({
     isDemoData: room.isDemoData,
     dataSource: room.dataSource,
   }));
-  const params = await searchParams;
   const first = (key: string) => (Array.isArray(params[key]) ? params[key]?.[0] : params[key]);
   const tomorrow = addDaysToDateKey(dateKeyInTimezone(new Date(), settings.timezone), 1);
   const preselectedRoom = first("roomId");

@@ -1,3 +1,4 @@
+import { cache } from "react";
 import type { PoolClient } from "pg";
 import { query, queryOne, withTransaction } from "./db";
 import {
@@ -75,6 +76,12 @@ function mapSettings(row: SettingsRow): OperationalSettings {
   };
 }
 
+const getSettingsCached = cache(async (): Promise<OperationalSettings> => {
+  const row = await queryOne<SettingsRow>("SELECT * FROM operational_settings WHERE id = 1");
+  if (!row) throw new Error("Konfigurasi operasional belum tersedia.");
+  return mapSettings(row);
+});
+
 export async function getSettings(client?: Pick<PoolClient, "query">): Promise<OperationalSettings> {
   const sql = `SELECT * FROM operational_settings WHERE id = 1`;
   if (client) {
@@ -82,9 +89,7 @@ export async function getSettings(client?: Pick<PoolClient, "query">): Promise<O
     if (!result.rows[0]) throw new Error("Konfigurasi operasional belum tersedia.");
     return mapSettings(result.rows[0]);
   }
-  const row = await queryOne<SettingsRow>(sql);
-  if (!row) throw new Error("Konfigurasi operasional belum tersedia.");
-  return mapSettings(row);
+  return getSettingsCached();
 }
 
 export async function getClockConfig(
@@ -123,8 +128,16 @@ export async function getClockConfig(
     holidayRows = (await client.query(holidaySql, [fromDate, toDate])).rows;
     exceptionRows = (await client.query(exceptionSql, [fromDate, toDate])).rows;
   } else {
-    holidayRows = await query(holidaySql, [fromDate, toDate]);
-    exceptionRows = await query(exceptionSql, [fromDate, toDate]);
+    [holidayRows, exceptionRows] = await Promise.all([
+      query<{ date: string }>(holidaySql, [fromDate, toDate]),
+      query<{
+        date: string;
+        is_closed: boolean;
+        open_time: string | null;
+        close_time: string | null;
+        description: string;
+      }>(exceptionSql, [fromDate, toDate]),
+    ]);
   }
 
   const exceptions = new Map<string, DayException>();

@@ -9,8 +9,7 @@ export const metadata = { title: "Notifikasi" };
 
 export default async function NotificationsPage() {
   const user = await requireUser();
-  const settings = await getSettings();
-  const notifications = await listNotifications(user.id);
+  const [settings, notifications] = await Promise.all([getSettings(), listNotifications(user.id)]);
   return (
     <>
       <PageHeader

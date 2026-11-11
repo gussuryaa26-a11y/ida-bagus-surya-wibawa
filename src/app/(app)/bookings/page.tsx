@@ -22,8 +22,7 @@ export default async function MyBookingsPage({
 }) {
   const user = await requireUser();
   if (user.role !== "student") redirect("/dashboard");
-  const settings = await getSettings();
-  const params = await searchParams;
+  const [settings, params] = await Promise.all([getSettings(), searchParams]);
   const first = (key: string) => (Array.isArray(params[key]) ? params[key]?.[0] : params[key]);
   const statusParam = first("status") as BookingStatus | undefined;
   const status = BOOKING_STATUSES.includes(statusParam as BookingStatus) ? statusParam : undefined;

@@ -13,7 +13,6 @@ import {
 } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { getStudentDashboard } from "@/lib/reports";
-import { getClockConfig } from "@/lib/settings";
 import { operationalMinutesBetween } from "@/lib/operational-clock";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatCard } from "@/components/ui/stat-card";
@@ -40,7 +39,8 @@ export default async function StudentDashboardPage() {
     );
   }
 
-  const [dashboard, config] = await Promise.all([getStudentDashboard(user.id), getClockConfig()]);
+  const dashboard = await getStudentDashboard(user.id);
+  const config = dashboard.config;
   const timezone = config.settings.timezone;
   const now = new Date();
   const firstName = user.fullName.split(" ")[0];
