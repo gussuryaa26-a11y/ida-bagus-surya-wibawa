@@ -50,6 +50,10 @@ export function AppShell({
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
+  // Banner DEMO global tidak ditampilkan di dashboard mahasiswa/akademik.
+  // Halaman lain tetap memakai banner yang sama.
+  const isDashboardRoute = pathname === "/dashboard" || pathname === "/academic";
+
   // Hanya satu item yang boleh aktif: pilih href paling spesifik yang cocok.
   // Contoh: "/bookings/new" harus mengaktifkan "Ajukan Peminjaman" saja,
   // bukan juga "Pengajuan Saya" (/bookings) yang merupakan induknya.
@@ -185,7 +189,7 @@ export function AppShell({
           </Link>
         </header>
 
-        {(configUnconfirmed || demoBanner) && (
+        {!isDashboardRoute && (configUnconfirmed || demoBanner) && (
           <div className="border-b border-accent-300 bg-warning-100 px-4 py-2 text-center text-[0.78rem] font-medium text-warning-700 sm:px-6 lg:px-10">
             {configUnconfirmed
               ? "Mode DEMO — jam operasional, kalender, ruangan, dan kapasitas belum dikonfirmasi kampus. "
@@ -194,7 +198,14 @@ export function AppShell({
           </div>
         )}
 
-        <main className="px-4 py-6 sm:px-6 lg:px-10 lg:py-8">{children}</main>
+        <main
+          className={clsx(
+            "px-4 sm:px-6 lg:px-10",
+            isDashboardRoute ? "pb-6 pt-8 lg:pb-8 lg:pt-10" : "py-6 lg:py-8",
+          )}
+        >
+          {children}
+        </main>
         <footer className="px-4 pb-8 text-center text-[0.7rem] text-muted sm:px-6 lg:px-10">
           SIMPAR — sistem internal kampus, tanpa pembayaran/monetisasi. Ketersediaan berdasarkan data jadwal
           tercatat, bukan okupansi fisik.
