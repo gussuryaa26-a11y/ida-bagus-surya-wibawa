@@ -61,13 +61,6 @@ export default async function AcademicDashboardPage({
         }
       />
 
-      {!settings.isConfirmed ? (
-        <Alert tone="warning" className="mb-5">
-          Konfigurasi jam operasional masih DEMO dan belum dikonfirmasi kampus. Perhitungan target dan penahanan
-          mengikuti konfigurasi tersebut.
-        </Alert>
-      ) : null}
-
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5" aria-label="Ringkasan antrean">
         <StatCard label="Menunggu" value={dashboard.pendingCount} icon={<Clock3 className="h-5 w-5" />} tone="brand" />
         <StatCard
