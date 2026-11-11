@@ -5,7 +5,6 @@ import { requireUser } from "@/lib/auth";
 import { listCalendarEntries } from "@/lib/calendar";
 import { getSettings } from "@/lib/settings";
 import { PageHeader } from "@/components/ui/page-header";
-import { Alert } from "@/components/ui/alert";
 import { CalendarManager, type CalendarEntryView } from "@/components/calendar-manager";
 import { formatDateTime } from "@/lib/format";
 
@@ -43,10 +42,6 @@ export default async function CalendarPage() {
         title="Kalender akademik"
         description="Kelola semester, hari libur, periode libur, dan pengecualian. Perubahan memicu perhitungan ulang tenggat pengajuan yang masih terbuka."
       />
-      <Alert tone="warning" className="mb-5" title="Belum tentu disahkan kampus">
-        Data seed dan konfigurasi awal berstatus DEMO. Hanya entri dengan sumber/otoritas resmi yang boleh dianggap sah.
-        Hari libur tidak otomatis membuat semua ruangan tersedia; booking, penutupan, dan pembatasan tetap berlaku.
-      </Alert>
       <CalendarManager entries={rows} />
     </>
   );

@@ -37,15 +37,11 @@ export function AppShell({
   user,
   navItems,
   unreadCount,
-  configUnconfirmed,
-  demoBanner,
 }: {
   children: ReactNode;
   user: { fullName: string; role: UserRole; organizationName: string | null };
   navItems: NavItem[];
   unreadCount: number;
-  configUnconfirmed: boolean;
-  demoBanner: boolean;
 }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
@@ -188,15 +184,6 @@ export function AppShell({
             ) : null}
           </Link>
         </header>
-
-        {!isDashboardRoute && (configUnconfirmed || demoBanner) && (
-          <div className="border-b border-accent-300 bg-warning-100 px-4 py-2 text-center text-[0.78rem] font-medium text-warning-700 sm:px-6 lg:px-10">
-            {configUnconfirmed
-              ? "Mode DEMO — jam operasional, kalender, ruangan, dan kapasitas belum dikonfirmasi kampus. "
-              : ""}
-            {demoBanner ? "Sebagian data ruangan berlabel DEMO dan bukan data resmi." : ""}
-          </div>
-        )}
 
         <main
           className={clsx(

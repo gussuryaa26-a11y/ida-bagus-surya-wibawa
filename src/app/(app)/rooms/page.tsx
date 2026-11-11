@@ -119,13 +119,6 @@ export default async function RoomsPage({
         </div>
       ) : null}
 
-      {!settings.isConfirmed ? (
-        <Alert tone="warning" className="mb-5" title="Konfigurasi belum dikonfirmasi kampus">
-          Data jam operasional dan kalender masih bersifat DEMO. Kapasitas/fasilitas ruangan berlabel DEMO belum
-          diverifikasi kampus.
-        </Alert>
-      ) : null}
-
       <Card className="mb-6">
         <form method="get" className="grid gap-4 p-5 sm:grid-cols-2 xl:grid-cols-7">
           <div className="xl:col-span-2">

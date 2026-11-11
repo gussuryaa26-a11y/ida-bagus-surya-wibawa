@@ -17,7 +17,6 @@ import {
 import { requireUser } from "@/lib/auth";
 import { queryOne } from "@/lib/db";
 import { countUnreadNotifications } from "@/lib/notifications";
-import { getSettings } from "@/lib/settings";
 import { AppShell, type NavItem } from "@/components/app-shell";
 
 export default async function AuthenticatedLayout({ children }: { children: ReactNode }) {
@@ -37,12 +36,7 @@ export default async function AuthenticatedLayout({ children }: { children: Reac
           )
         : Promise.resolve(null);
 
-  const [settings, unread, demoRow, pending] = await Promise.all([
-    getSettings(),
-    countUnreadNotifications(user.id),
-    queryOne<{ exists: boolean }>("SELECT EXISTS(SELECT 1 FROM rooms WHERE is_demo_data = true) AS exists"),
-    pendingPromise,
-  ]);
+  const [unread, pending] = await Promise.all([countUnreadNotifications(user.id), pendingPromise]);
 
   const icon = "h-[1.1rem] w-[1.1rem]";
   const common: NavItem[] = [
@@ -100,8 +94,6 @@ export default async function AuthenticatedLayout({ children }: { children: Reac
       user={{ fullName: user.fullName, role: user.role, organizationName: user.organizationName }}
       navItems={navItems}
       unreadCount={unread}
-      configUnconfirmed={!settings.isConfirmed}
-      demoBanner={Boolean(demoRow?.exists)}
     >
       {children}
     </AppShell>

@@ -58,11 +58,6 @@ export default async function NewBookingPage({
           Pengajuan tidak dapat dikirim tanpa organisasi resmi. Lengkapi profil atau hubungi Admin IT.
         </Alert>
       ) : null}
-      {!settings.isConfirmed ? (
-        <Alert tone="warning" className="mb-5">
-          Konfigurasi jam operasional dan data ruangan masih DEMO. Jangan menganggap data ini sebagai data resmi kampus.
-        </Alert>
-      ) : null}
       <BookingWizard
         mode="create"
         initialRooms={rooms}
